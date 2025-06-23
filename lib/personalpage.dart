@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'cardelement.dart';
-import 'codeforces_service.dart';
+import 'codeforces_api.dart';
+import 'db.dart';
+import 'cf_services.dart';
 
 class PersonalPage extends StatefulWidget {
   const PersonalPage({Key? key}) : super(key: key);
@@ -16,12 +17,14 @@ class _PersonalPageState extends State<PersonalPage> {
   int? _rating;
   int? _maxRating;
   int? _ratingDeltaAvg;
-  final _prefsKey = 'cf_handle';
 
   @override
   void initState() {
     super.initState();
-    _loadHandle();
+
+    if (StatusDb.hasHandle()) {
+      _loadUserStat();
+    }
   }
 
   @override
@@ -52,6 +55,16 @@ class _PersonalPageState extends State<PersonalPage> {
                     'Current Rating: ${_rating != null && _rating! > 0 ? _rating : '-'}',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _getRatingColor(_rating))
                   ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh'),
+                  onPressed: _refreshUserStat,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    side: const BorderSide(color: Colors.grey),
+                  ),
+                )
               ]
             ),
             const SizedBox(height: 2),
@@ -91,26 +104,8 @@ class _PersonalPageState extends State<PersonalPage> {
     );
   }
 
-  Future<void> _loadHandle() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedHandle = prefs.getString(_prefsKey);
-
-    String? fetchedHandle = savedHandle;
-    int? fetchedRating;
-
-    if (savedHandle != null) {
-      await _fetchUserStat(savedHandle);
-    }
-
-    setState(() {
-      _handle = fetchedHandle;
-      _rating = fetchedRating;
-    });
-  }
-
   Future<void> _saveHandle(String handle) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, handle);
+    await StatusDb.saveHandle(handle);
 
     setState(() {
       _handle = handle;
@@ -132,6 +127,10 @@ class _PersonalPageState extends State<PersonalPage> {
 
       final rating = userInfo['rating'];
       final maxRating = userInfo['maxRating'];
+
+      await StatusDb.saveMaxRating(maxRating as int);
+      await StatusDb.saveCurrentRating(rating as int);
+
       setState(() {
         _rating = rating;
         _maxRating = maxRating;
@@ -145,7 +144,10 @@ class _PersonalPageState extends State<PersonalPage> {
   Future<void> _fetchUserStat(String handle) async {
     try {
       await _fetchRatingFromServer();
-      int deltaAvg = await _cfApi.fetchUserRatingDeltaAvg(handle);
+      await fetchAndSaveMaxRatingByTag(handle);
+      
+      int deltaAvg = await _cfApi.fetchUserRatingDeltaAvg(handle);      
+      await StatusDb.saveRatingDeltaAvg(deltaAvg);
 
       setState(() {
         _ratingDeltaAvg = deltaAvg;
@@ -155,6 +157,20 @@ class _PersonalPageState extends State<PersonalPage> {
       _showErrorDialog('Failed to fetch user statistics. Please try again later.');
       debugPrint('Error fetching user statistics: $error');
     }
+  }
+
+  void _loadUserStat() {
+    String handle = StatusDb.getHandle();
+    int rating = StatusDb.getCurrentRating();
+    int maxRating = StatusDb.getMaxRating();
+    int ratingDeltaAvg = StatusDb.getRatingDeltaAvg(handle);
+
+    setState(() {
+      _handle = handle;
+      _rating = rating;
+      _maxRating = maxRating;
+      _ratingDeltaAvg = ratingDeltaAvg;
+    });
   }
 
   void _showHandleInputDialog() async {
@@ -188,6 +204,16 @@ class _PersonalPageState extends State<PersonalPage> {
     if (result != null && result.isNotEmpty) {
       await _saveHandle(result);
     }
+  }
+
+  Future<void> _refreshUserStat() async {
+    if (StatusDb.hasHandle() == false) {
+      // await _showErrorDialog('Please enter your Codeforces handle first.');
+      return;
+    }
+
+    String handle = StatusDb.getHandle();
+    await _fetchUserStat(handle);
   }
 
   Future<void> _showErrorDialog(String message) async {

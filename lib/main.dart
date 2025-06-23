@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'personalpage.dart';
 import 'teampage.dart';
 import 'cardelement.dart';
+import 'db.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await StatusDb.init();
+
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
     home: MyApp(),
