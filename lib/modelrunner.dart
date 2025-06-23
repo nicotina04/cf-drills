@@ -2,7 +2,14 @@ import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
 class XGBoostRunner {
+  static final XGBoostRunner _instance = XGBoostRunner._internal();
   late OrtSession _session;
+
+  factory XGBoostRunner() {
+    return _instance;
+  }
+
+  XGBoostRunner._internal();
 
   Future<void> init() async {
     OrtEnv.instance.init();

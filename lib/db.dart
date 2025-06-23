@@ -57,11 +57,6 @@ class StatusDb {
     final box = Hive.box(_boxName);
     await box.put('current_rating', rating);
   }
-  
-  static Future<void> clear() async {
-    final box = Hive.box(_boxName);
-    await box.clear();
-  }
 
   static Future<void> saveTagMaxRating(Map<String, int> ratingMap) async {
     final box = Hive.box(_boxName);
@@ -70,6 +65,34 @@ class StatusDb {
 
   static Map<String, int> getTagMaxRatings() {
     final box = Hive.box(_boxName);
-    return box.get('max_rating_tags', defaultValue: <String, int>{}) as Map<String, int>;
-  } 
+    return box.get('max_rating_tags', defaultValue: <String, int>{})
+        as Map<String, int>;
+  }
+
+  static Set<String> getSolvedProblems() {
+    final box = Hive.box(_boxName);
+    return box.get('solved_problems', defaultValue: <String>{}) as Set<String>;
+  }
+
+  static Future<void> saveSolvedProblems(Set<String> problems) async {
+    final box = Hive.box(_boxName);
+    await box.put('solved_problems', problems);
+  }
+
+  static Future<void> saveDisplayedProblems(
+      List<Map<String, dynamic>> problems, String difficulty) async {
+    final box = Hive.box(_boxName);
+    await box.put('displayed_$difficulty', problems);
+  }
+
+  static List<Map<String, dynamic>> getDisplayedProblems(String difficulty) {
+    final box = Hive.box(_boxName);
+    return box.get('displayed_$difficulty',
+        defaultValue: <Map<String, dynamic>>[]) as List<Map<String, dynamic>>;
+  }
+
+  static Future<void> clear() async {
+    final box = Hive.box(_boxName);
+    await box.clear();
+  }
 }

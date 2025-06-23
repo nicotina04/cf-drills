@@ -10,7 +10,7 @@ class TeamPage extends StatelessWidget {
         title: const Text('Team Tab'),
       ),
       body: const Center(
-        child: Text('Team Tab Content'),
+        child: Text('Coming soon!'),
       ),
     );
   }
