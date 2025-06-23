@@ -73,4 +73,40 @@ class CodeforcesApi {
       throw Exception('Failed to fetch user submission history');
     }
   }
+
+  Future<List<Map<String, dynamic>>> fetchAllProblems({String? tag}) async {
+    return tag != null ? _fetchProblemsByTag(tag) : _fetchAllProblems();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchAllProblems() async {
+    try {
+      var res = await dio.get('problemset.problems');
+      if (res.statusCode == 200 && res.data['status'] == 'OK') {
+        return res.data['result']['problems'] as List<Map<String, dynamic>>;
+      } else {
+        throw Exception('Failed to fetch problems: ${res.data}');
+      }
+    } catch (e) {
+      print('Error fetching problems: $e');
+      throw Exception('Failed to fetch problems');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchProblemsByTag(String tag) async {
+    try {
+      var res =
+          await dio.get('problemset.problems', queryParameters: {'tags': tag});
+      if (res.statusCode == 200 && res.data['status'] == 'OK') {
+        return res.data['result']['problems']
+            .where((problem) => problem['tags'].contains(tag))
+            .toList()
+            .cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Failed to fetch problems by tag: ${res.data}');
+      }
+    } catch (e) {
+      print('Error fetching problems by tag: $e');
+      throw Exception('Failed to fetch problems by tag');
+    }
+  }
 }

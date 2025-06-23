@@ -38,64 +38,80 @@ class _PersonalPageState extends State<PersonalPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.edit),
-                  label: Text(_handle ?? 'Enter your Codeforces handle'),
-                  onPressed: _showHandleInputDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.grey),
-                  ),
+            Row(children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.edit),
+                label: Text(_handle ?? 'Enter your Codeforces handle'),
+                onPressed: _showHandleInputDialog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  side: const BorderSide(color: Colors.grey),
                 ),
-                const SizedBox(width: 16),
-                Text(
-                    'Current Rating: ${_rating != null && _rating! > 0 ? _rating : '-'}',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _getRatingColor(_rating))
-                  ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Refresh'),
-                  onPressed: _refreshUserStat,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    side: const BorderSide(color: Colors.grey),
-                  ),
-                )
-              ]
-            ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                  'Current Rating: ${_rating != null && _rating! > 0 ? _rating : '-'}',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _getRatingColor(_rating))),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Refresh'),
+                onPressed: () async => await _refreshUserStat(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  side: const BorderSide(color: Colors.grey),
+                ),
+              )
+            ]),
             const SizedBox(height: 2),
             Row(
               children: [
                 Text(
                   'Max Rating: ${_maxRating != null && _maxRating! > 0 ? _maxRating : '-'}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(width: 16),
                 Text(
                   'Rating Delta Avg: ${_ratingDeltaAvg != null ? _ratingDeltaAvg : '0'}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Expanded(
               child: Align(
                 alignment: Alignment.center,
                 child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CardElement(icon: Icons.cake, title: 'Easy', description: '쉬운 문제(정답률 70%~80%)', onTap: onTapEasy),
-                  CardElement(icon: Icons.bolt, title: 'Medium', description: '보통 문제(정답률 40%~60%)', onTap: onTapMedium),
-                  CardElement(icon: Icons.fireplace_outlined, title: 'Challenging', description: '도전 문제(정답률 25%~40%)', onTap: onTapHard),
-                  CardElement(icon: Icons.rocket_launch, title: 'Set', description: '종합 세트', onTap: onTapSet),
-                ],
-            ),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CardElement(
+                        icon: Icons.cake,
+                        title: 'Easy',
+                        description: '쉬운 문제(정답률 70%~80%)',
+                        onTap: onTapEasy),
+                    CardElement(
+                        icon: Icons.bolt,
+                        title: 'Medium',
+                        description: '보통 문제(정답률 40%~60%)',
+                        onTap: onTapMedium),
+                    CardElement(
+                        icon: Icons.fireplace_outlined,
+                        title: 'Challenging',
+                        description: '도전 문제(정답률 25%~40%)',
+                        onTap: onTapHard),
+                    CardElement(
+                        icon: Icons.rocket_launch,
+                        title: 'Set',
+                        description: '종합 세트',
+                        onTap: onTapSet),
+                  ],
+                ),
               ),
             ),
           ],
@@ -121,7 +137,8 @@ class _PersonalPageState extends State<PersonalPage> {
       final userInfo = await _cfApi.fetchUserInfo(_handle!);
 
       if (userInfo == null) {
-        _showErrorDialog('Failed to fetch user info. Please check your handle.');
+        _showErrorDialog(
+            'Failed to fetch user info. Please check your handle.');
         return;
       }
 
@@ -144,17 +161,17 @@ class _PersonalPageState extends State<PersonalPage> {
   Future<void> _fetchUserStat(String handle) async {
     try {
       await _fetchRatingFromServer();
-      await fetchAndSaveMaxRatingByTag(handle);
-      
-      int deltaAvg = await _cfApi.fetchUserRatingDeltaAvg(handle);      
+      await fetchAndProcessSubmissions(handle);
+
+      int deltaAvg = await _cfApi.fetchUserRatingDeltaAvg(handle);
       await StatusDb.saveRatingDeltaAvg(deltaAvg);
 
       setState(() {
         _ratingDeltaAvg = deltaAvg;
       });
-
     } catch (error) {
-      _showErrorDialog('Failed to fetch user statistics. Please try again later.');
+      _showErrorDialog(
+          'Failed to fetch user statistics. Please try again later.');
       debugPrint('Error fetching user statistics: $error');
     }
   }
@@ -177,43 +194,50 @@ class _PersonalPageState extends State<PersonalPage> {
     String input = _handle ?? '';
     final controller = TextEditingController(text: input);
     final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Codeforces Handle'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Enter your Codeforces handle',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop(controller.text.trim());
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      )
-    );
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text('Codeforces Handle'),
+              content: TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'Enter your Codeforces handle',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop(controller.text.trim());
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            ));
 
     if (result != null && result.isNotEmpty) {
       await _saveHandle(result);
     }
   }
 
-  Future<void> _refreshUserStat() async {
+  Future<void> _refreshUserStat(BuildContext context) async {
     if (StatusDb.hasHandle() == false) {
-      // await _showErrorDialog('Please enter your Codeforces handle first.');
+      await _showErrorDialog('Please enter your Codeforces handle first.');
       return;
     }
 
-    String handle = StatusDb.getHandle();
-    await _fetchUserStat(handle);
+    try {
+      String handle = StatusDb.getHandle();
+      await _fetchUserStat(handle);
+      await fetchAndProcessSubmissions(handle);
+    } catch (error) {
+      debugPrint('Error refreshing user statistics: $error');
+      await _showErrorDialog(
+          'Failed to refresh user statistics. Please try again later.');
+      return;
+    }
   }
 
   Future<void> _showErrorDialog(String message) async {

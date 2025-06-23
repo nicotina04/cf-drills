@@ -3,9 +3,11 @@ import 'personalpage.dart';
 import 'teampage.dart';
 import 'cardelement.dart';
 import 'db.dart';
+import 'modelrunner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await XGBoostRunner().init();
   await StatusDb.init();
 
   runApp(const MaterialApp(
