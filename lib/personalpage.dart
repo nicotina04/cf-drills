@@ -171,7 +171,7 @@ class _PersonalPageState extends State<PersonalPage> {
     String handle = StatusDb.getHandle();
     int rating = StatusDb.getCurrentRating();
     int maxRating = StatusDb.getMaxRating();
-    int ratingDeltaAvg = StatusDb.getRatingDeltaAvg(handle);
+    int ratingDeltaAvg = StatusDb.getRatingDeltaAvg();
 
     setState(() {
       _handle = handle;

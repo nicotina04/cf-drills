@@ -28,7 +28,7 @@ class StatusDb {
     await box.delete('cf_handle');
   }
 
-  static int getRatingDeltaAvg(String handle) {
+  static int getRatingDeltaAvg() {
     final box = Hive.box(_boxName);
     return box.get('rating_delta_avg', defaultValue: 0) as int;
   }
@@ -89,6 +89,23 @@ class StatusDb {
     final box = Hive.box(_boxName);
     return box.get('displayed_$difficulty',
         defaultValue: <Map<String, dynamic>>[]) as List<Map<String, dynamic>>;
+  }
+
+  static bool hasContestData(String contestId) {
+    final box = Hive.box(_boxName);
+    return box.containsKey('contest_data_$contestId');
+  }
+
+  static Future<void> saveContestData(
+      String contestId, Map<String, dynamic> data) async {
+    final box = Hive.box(_boxName);
+    await box.put('contest_data_$contestId', data);
+  }
+
+  static Map<String, dynamic> getContestData(String contestId) {
+    final box = Hive.box(_boxName);
+    return box.get('contest_data_$contestId',
+        defaultValue: <String, dynamic>{}) as Map<String, dynamic>;
   }
 
   static Future<void> clear() async {
