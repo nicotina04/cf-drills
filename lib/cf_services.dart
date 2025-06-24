@@ -67,3 +67,20 @@ Future<List<Map<String, dynamic>>> getUnsolvedProblems() async {
           .contains("${problem['contestId']}:${problem['index']}"))
       .toList();
 }
+
+List<Map<String, dynamic>> selectRandomProblems(double minProb, double maxProb,
+    List<Map<String, dynamic>> problems, int count) {
+  final random = Random(DateTime.now().millisecondsSinceEpoch);
+  final selectedProblems = <Map<String, dynamic>>[];
+
+  problems.shuffle(random);
+  var model = XGBoostRunner();
+
+  // todo: Implement the model prediction logic
+  // This is a placeholder for the model prediction logic.
+  // for (var problem in problems) {
+  //   model.predict(inputData, featureSize)
+  // }
+
+  return selectedProblems;
+}
