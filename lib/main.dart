@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'personalpage.dart';
-import 'teampage.dart';
-import 'cardelement.dart';
+import 'pages/personalpage.dart';
+import 'pages/teampage.dart';
+import 'pages/cardelement.dart';
 import 'db.dart';
 import 'modelrunner.dart';
 import 'local_data_service.dart';

@@ -14,7 +14,8 @@ class CodeforcesApi {
       if (response.statusCode == 200 && response.data['status'] == 'OK') {
         return response.data['result'][0];
       } else {
-        throw Exception('Failed to fetch user info: code=${response.statusCode}, data=${response.data}');
+        throw Exception(
+            'Failed to fetch user info: code=${response.statusCode}, data=${response.data}');
       }
     } on DioException catch (e) {
       print('DioException fetching user info: $e');
@@ -65,9 +66,10 @@ class CodeforcesApi {
       final response =
           await dio.get('user.status', queryParameters: {'handle': handle});
       if (response.statusCode == 200 && response.data['status'] == 'OK') {
-        return response.data['result'];
+        return List<Map<String, dynamic>>.from(response.data['result']);
       } else {
-        throw Exception('Failed to fetch user submission history: code=${response.statusCode}, data=${response.data}');
+        throw Exception(
+            'Failed to fetch user submission history: code=${response.statusCode}, data=${response.data}');
       }
     } on DioException catch (e) {
       print('Error fetching user submission history: $e');
@@ -89,9 +91,7 @@ class CodeforcesApi {
           throw Exception('Unexpected data format: ${rawList.runtimeType}');
         }
 
-        return rawList
-            .whereType<Map<String, dynamic>>()
-            .toList();
+        return rawList.whereType<Map<String, dynamic>>().toList();
       } else {
         throw Exception('Failed to fetch problems: ${res.data}');
       }
@@ -113,7 +113,8 @@ class CodeforcesApi {
 
         return rawList
             .whereType<Map<String, dynamic>>()
-            .where((problem) => (problem['tags'] as List?)?.contains(tag) ?? false)
+            .where(
+                (problem) => (problem['tags'] as List?)?.contains(tag) ?? false)
             .toList();
       } else {
         throw Exception('Failed to fetch problems by tag: ${res.data}');
