@@ -4,9 +4,11 @@ import 'teampage.dart';
 import 'cardelement.dart';
 import 'db.dart';
 import 'modelrunner.dart';
+import 'local_data_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalDataService.init();
   await XGBoostRunner().init();
   await StatusDb.init();
 

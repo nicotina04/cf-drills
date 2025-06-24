@@ -2,6 +2,7 @@ import 'dart:math';
 import 'codeforces_api.dart';
 import 'db.dart';
 import 'modelrunner.dart';
+import 'local_data_service.dart';
 
 Map<String, int> tagMaxRatingFromSubmissions(
     List<Map<String, dynamic>> submissions) {
@@ -64,23 +65,48 @@ Future<List<Map<String, dynamic>>> getUnsolvedProblems() async {
 
   return allProblems
       .where((problem) => !solvedProblems
-          .contains("${problem['contestId']}:${problem['index']}"))
+          .contains("${problem['contestId']}:${problem['index']}") && problem.containsKey('rating') && problem['rating'] != null)
       .toList();
 }
 
-List<Map<String, dynamic>> selectRandomProblems(double minProb, double maxProb,
-    List<Map<String, dynamic>> problems, int count) {
+Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb, double maxProb,
+    List<Map<String, dynamic>> problems, int count) async {
   final random = Random(DateTime.now().millisecondsSinceEpoch);
   final selectedProblems = <Map<String, dynamic>>[];
 
   problems.shuffle(random);
   var model = XGBoostRunner();
 
-  // todo: Implement the model prediction logic
-  // This is a placeholder for the model prediction logic.
-  // for (var problem in problems) {
-  //   model.predict(inputData, featureSize)
-  // }
+  final features = LocalDataService.getFeatureNames();
+  int featureSize = features.length;
+
+  for (var problem in problems) {
+    Map<String, double> inputMap = {};
+    inputMap['current_rating_before_contest'] = StatusDb.getCurrentRating().toDouble();
+    inputMap['max_rating_before_contest'] = StatusDb.getMaxRating().toDouble();
+    inputMap['rating_delta_avg'] = StatusDb.getRatingDeltaAvg().toDouble();
+    // calculate contest data
+
+    // final contestId = problem
+
+    // make vector
+    List<double> inputVector = List<double>.empty(growable: true);
+    for (String feature in features) {
+      inputVector.add(inputMap[feature] ?? 0.0);
+    }
+
+    final result = await model.predict(inputVector, featureSize);
+
+    if (result < minProb || result > maxProb) {
+      continue;
+    }
+
+    selectedProblems.add(problem);
+
+    if (selectedProblems.length >= count) {
+      break;
+    }
+  }
 
   return selectedProblems;
 }

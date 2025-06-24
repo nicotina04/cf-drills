@@ -19,7 +19,7 @@ class XGBoostRunner {
     _session = OrtSession.fromBuffer(bytes, sessionOptions);
   }
 
-  Future<List<double>> predict(List<double> inputData, int featureSize) async {
+  Future<double> predict(List<double> inputData, int featureSize) async {
     final shape = [1, featureSize];
     final inputOrt = OrtValueTensor.createTensorWithDataList(inputData, shape);
     final inputs = {'input': inputOrt};
@@ -32,9 +32,9 @@ class XGBoostRunner {
     final result = outputs?[0]?.value;
     outputs?.forEach((elem) => elem?.release());
 
-    if (result is List<double>) {
+    if (result is List<double> && result.isNotEmpty) {
       print('Prediction result: $result');
-      return result;
+      return result[0];
     } else {
       throw Exception('Unexpected output type: ${result.runtimeType}');
     }
