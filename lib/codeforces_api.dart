@@ -1,5 +1,4 @@
 import 'dart:math';
-
 import 'package:dio/dio.dart';
 
 class CodeforcesApi {
@@ -8,18 +7,21 @@ class CodeforcesApi {
   CodeforcesApi({Dio? dio})
       : dio = dio ?? Dio(BaseOptions(baseUrl: 'https://codeforces.com/api/'));
 
-  Future<Map<String, dynamic>?> fetchUserInfo(String handle) async {
+  Future<Map<String, dynamic>> fetchUserInfo(String handle) async {
     try {
       final response =
           await dio.get('user.info', queryParameters: {'handles': handle});
       if (response.statusCode == 200 && response.data['status'] == 'OK') {
         return response.data['result'][0];
       } else {
-        throw Exception('Failed to fetch user info: ${response.data}');
+        throw Exception('Failed to fetch user info: code=${response.statusCode}, data=${response.data}');
       }
+    } on DioException catch (e) {
+      print('DioException fetching user info: $e');
+      rethrow;
     } catch (e) {
       print('Error fetching user info: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -53,7 +55,7 @@ class CodeforcesApi {
       return (totalDelta / max(1, cnt)).floor();
     } catch (e) {
       print('Error fetching user rating delta: $e');
-      throw Exception('Failed to fetch user rating delta');
+      rethrow;
     }
   }
 
@@ -65,12 +67,11 @@ class CodeforcesApi {
       if (response.statusCode == 200 && response.data['status'] == 'OK') {
         return response.data['result'];
       } else {
-        throw Exception(
-            'Failed to fetch user submission history: ${response.data}');
+        throw Exception('Failed to fetch user submission history: code=${response.statusCode}, data=${response.data}');
       }
-    } catch (e) {
+    } on DioException catch (e) {
       print('Error fetching user submission history: $e');
-      throw Exception('Failed to fetch user submission history');
+      rethrow;
     }
   }
 
@@ -82,13 +83,21 @@ class CodeforcesApi {
     try {
       var res = await dio.get('problemset.problems');
       if (res.statusCode == 200 && res.data['status'] == 'OK') {
-        return res.data['result']['problems'] as List<Map<String, dynamic>>;
+        final rawList = res.data['result']['problems'];
+
+        if ((rawList is List) == false) {
+          throw Exception('Unexpected data format: ${rawList.runtimeType}');
+        }
+
+        return rawList
+            .whereType<Map<String, dynamic>>()
+            .toList();
       } else {
         throw Exception('Failed to fetch problems: ${res.data}');
       }
     } catch (e) {
       print('Error fetching problems: $e');
-      throw Exception('Failed to fetch problems');
+      rethrow;
     }
   }
 
@@ -97,16 +106,21 @@ class CodeforcesApi {
       var res =
           await dio.get('problemset.problems', queryParameters: {'tags': tag});
       if (res.statusCode == 200 && res.data['status'] == 'OK') {
-        return res.data['result']['problems']
-            .where((problem) => problem['tags'].contains(tag))
-            .toList()
-            .cast<Map<String, dynamic>>();
+        final rawList = res.data['result']['problems'];
+        if (rawList is! List) {
+          throw Exception('Unexpected data format: ${rawList.runtimeType}');
+        }
+
+        return rawList
+            .whereType<Map<String, dynamic>>()
+            .where((problem) => (problem['tags'] as List?)?.contains(tag) ?? false)
+            .toList();
       } else {
         throw Exception('Failed to fetch problems by tag: ${res.data}');
       }
     } catch (e) {
       print('Error fetching problems by tag: $e');
-      throw Exception('Failed to fetch problems by tag');
+      rethrow;
     }
   }
 }
