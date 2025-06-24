@@ -11,8 +11,10 @@ Map<String, int> tagMaxRatingFromSubmissions(
   final acContestants = submissions
       .where((submission) =>
           submission['verdict'] == 'OK' &&
-          submission['participantType'] == 'CONTESTANT')
+          submission['author']['participantType'] == 'CONTESTANT')
       .toList();
+
+  print(acContestants.length);
 
   for (final submission in acContestants) {
     final tags = submission['problem']['tags'] as List<dynamic>;
@@ -38,7 +40,19 @@ Future<Map<String, int>> getMaxRatingByTag(String handle) async {
   return tagMaxRatingFromSubmissions(submissions);
 }
 
-Future<void> _saveSolvedProblems(List<Map<String, dynamic>> submissions) async {
+Future<void> _saveSolvedProblemsAll(
+    List<Map<String, dynamic>> submissions) async {
+  final solvedProblems = submissions
+      .where((submission) => submission['verdict'] == 'OK')
+      .map((submission) => "${submission['contestId']}:${submission['index']}")
+      .toSet();
+
+  List<String> solvedProblemsList = solvedProblems.toList(growable: false);
+  await StatusDb.saveSolvedProblems(solvedProblemsList);
+}
+
+Future<void> _saveSolvedProblemsContestant(
+    List<Map<String, dynamic>> submissions) async {
   final solvedProblems = submissions
       .where((submission) =>
           submission['verdict'] == 'OK' &&
@@ -46,14 +60,15 @@ Future<void> _saveSolvedProblems(List<Map<String, dynamic>> submissions) async {
       .map((submission) => "${submission['contestId']}:${submission['index']}")
       .toSet();
 
-  await StatusDb.saveSolvedProblems(solvedProblems);
+  await StatusDb.saveSolvedProblemsRated(List<String>.from(solvedProblems));
 }
 
 Future<void> fetchAndProcessSubmissions(String handle) async {
   final cfApi = CodeforcesApi();
   final submissions = await cfApi.fetchUserSubmissionHistory(handle);
 
-  await _saveSolvedProblems(submissions);
+  await _saveSolvedProblemsAll(submissions);
+  await _saveSolvedProblemsContestant(submissions);
   final tagMaxRatings = tagMaxRatingFromSubmissions(submissions);
   await StatusDb.saveTagMaxRating(tagMaxRatings);
 }
@@ -64,13 +79,16 @@ Future<List<Map<String, dynamic>>> getUnsolvedProblems() async {
   final solvedProblems = StatusDb.getSolvedProblems();
 
   return allProblems
-      .where((problem) => !solvedProblems
-          .contains("${problem['contestId']}:${problem['index']}") && problem.containsKey('rating') && problem['rating'] != null)
+      .where((problem) =>
+          !solvedProblems
+              .contains("${problem['contestId']}:${problem['index']}") &&
+          problem.containsKey('rating') &&
+          problem['rating'] != null)
       .toList();
 }
 
-Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb, double maxProb,
-    List<Map<String, dynamic>> problems, int count) async {
+Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb,
+    double maxProb, List<Map<String, dynamic>> problems, int count) async {
   final random = Random(DateTime.now().millisecondsSinceEpoch);
   final selectedProblems = <Map<String, dynamic>>[];
 
@@ -82,12 +100,16 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb, double m
 
   for (var problem in problems) {
     Map<String, double> inputMap = {};
-    inputMap['current_rating_before_contest'] = StatusDb.getCurrentRating().toDouble();
+    inputMap['current_rating_before_contest'] =
+        StatusDb.getCurrentRating().toDouble();
     inputMap['max_rating_before_contest'] = StatusDb.getMaxRating().toDouble();
     inputMap['rating_delta_avg'] = StatusDb.getRatingDeltaAvg().toDouble();
     // calculate contest data
 
     // final contestId = problem
+    StatusDb.getTagMaxRatings().forEach((tag, rating) {
+      inputMap['accepted_max_rating_$tag'] = rating.toDouble();
+    });
 
     // make vector
     List<double> inputVector = List<double>.empty(growable: true);
@@ -95,12 +117,16 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb, double m
       inputVector.add(inputMap[feature] ?? 0.0);
     }
 
+    print('Input map: $inputMap');
+    print('Input vector: $inputVector');
+
     final result = await model.predict(inputVector, featureSize);
 
     if (result < minProb || result > maxProb) {
       continue;
     }
 
+    print('Problem: ${problem} added');
     selectedProblems.add(problem);
 
     if (selectedProblems.length >= count) {

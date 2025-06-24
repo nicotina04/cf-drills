@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
+import 'dart:typed_data';
 
 class XGBoostRunner {
   static final XGBoostRunner _instance = XGBoostRunner._internal();
@@ -21,7 +22,9 @@ class XGBoostRunner {
 
   Future<double> predict(List<double> inputData, int featureSize) async {
     final shape = [1, featureSize];
-    final inputOrt = OrtValueTensor.createTensorWithDataList(inputData, shape);
+    final floatInput = Float32List.fromList(inputData);
+
+    final inputOrt = OrtValueTensor.createTensorWithDataList(floatInput, shape);
     final inputs = {'input': inputOrt};
     final runOptions = OrtRunOptions();
     final outputs = await _session.runAsync(runOptions, inputs);
@@ -29,15 +32,14 @@ class XGBoostRunner {
     inputOrt.release();
     runOptions.release();
 
-    final result = outputs?[0]?.value;
+    // shape of outputs -> [[class], [[probability]]]
+
+    final proba = outputs?[1]?.value as List<dynamic>;
+    final result = proba[0][1] as double;
+
     outputs?.forEach((elem) => elem?.release());
 
-    if (result is List<double> && result.isNotEmpty) {
-      print('Prediction result: $result');
-      return result[0];
-    } else {
-      throw Exception('Unexpected output type: ${result.runtimeType}');
-    }
+    return result;
   }
 
   void dispose() {

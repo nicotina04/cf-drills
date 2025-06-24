@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../codeforces_api.dart';
+import '../db.dart';
+import '../cf_services.dart';
+import 'problem_list_page.dart';
 import 'cardelement.dart';
-import 'codeforces_api.dart';
-import 'db.dart';
-import 'cf_services.dart';
 
 class PersonalPage extends StatefulWidget {
   const PersonalPage({Key? key}) : super(key: key);
@@ -95,17 +96,17 @@ class _PersonalPageState extends State<PersonalPage> {
                         icon: Icons.cake,
                         title: 'Easy',
                         description: '쉬운 문제(정답률 70%~80%)',
-                        onTap: onTapEasy),
+                        onTap: () async => await onTapCard(context, 'easy')),
                     CardElement(
                         icon: Icons.bolt,
                         title: 'Medium',
                         description: '보통 문제(정답률 40%~60%)',
-                        onTap: onTapMedium),
+                        onTap: () async => await onTapCard(context, 'medium')),
                     CardElement(
                         icon: Icons.fireplace_outlined,
                         title: 'Challenging',
                         description: '도전 문제(정답률 25%~40%)',
-                        onTap: onTapHard),
+                        onTap: () async => await onTapCard(context, 'hard')),
                     CardElement(
                         icon: Icons.rocket_launch,
                         title: 'Set',
@@ -153,10 +154,11 @@ class _PersonalPageState extends State<PersonalPage> {
       await _fetchRatingFromServer();
       await fetchAndProcessSubmissions(handle);
       int deltaAvg = await _cfApi.fetchUserRatingDeltaAvg(handle);
-      await StatusDb.saveRatingDeltaAvg(deltaAvg);  
+      await StatusDb.saveRatingDeltaAvg(deltaAvg);
     } on DioException catch (e) {
       final code = e.response?.statusCode;
-      _showErrorDialog('Failed to fetch user statistics (code: $code). Please try again later.');
+      _showErrorDialog(
+          'Failed to fetch user statistics (code: $code). Please try again later.');
       debugPrint('DioException fetching user statistics: $e');
       await _clearHandle();
     } catch (error) {
@@ -261,16 +263,58 @@ class _PersonalPageState extends State<PersonalPage> {
     return Colors.black;
   }
 
-  void onTapEasy() {
-    debugPrint('쉬운 문제 카드 선택됨');
-  }
+  Future<void> onTapCard(BuildContext context, String difficulty) async {
+    if (!StatusDb.hasHandle()) {
+      await _showErrorDialog('Please enter your Codeforces handle first.');
+      return;
+    }
 
-  void onTapMedium() {
-    // todo: try to get medium problems
-  }
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()));
 
-  void onTapHard() {
-    debugPrint('도전 문제 카드 선택됨');
+    List<Map<String, dynamic>> problems;
+    double minProb, maxProb;
+
+    if (difficulty == 'easy') {
+      minProb = 0.7;
+      maxProb = 0.8;
+    } else if (difficulty == 'medium') {
+      minProb = 0.4;
+      maxProb = 0.6;
+    } else {
+      // For hard or other difficulties, you can set your own probabilities
+      minProb = 0.25;
+      maxProb = 0.4;
+    }
+
+    try {
+      if (StatusDb.hasEasyProblems()) {
+        problems = StatusDb.getDisplayedProblems(difficulty);
+      } else {
+        final unsolvedProblems = await getUnsolvedProblems();
+        problems =
+            await selectRandomProblems(minProb, maxProb, unsolvedProblems, 6);
+        await StatusDb.saveDisplayedProblems(problems, difficulty);
+      }
+
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => ProblemListPage(
+                  title: '$difficulty Problems', problems: problems)));
+    } catch (e) {
+      if (!context.mounted) return;
+
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('문제 불러오기 실패: $e')),
+      );
+    }
   }
 
   void onTapSet() {
