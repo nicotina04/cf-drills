@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'cardelement.dart';
 import 'codeforces_api.dart';
@@ -122,12 +123,8 @@ class _PersonalPageState extends State<PersonalPage> {
 
   Future<void> _saveHandle(String handle) async {
     await StatusDb.saveHandle(handle);
-
-    setState(() {
-      _handle = handle;
-    });
-
     await _fetchUserStat(handle);
+    _loadUserStat();
   }
 
   Future<void> _fetchRatingFromServer() async {
@@ -135,23 +132,16 @@ class _PersonalPageState extends State<PersonalPage> {
 
     try {
       final userInfo = await _cfApi.fetchUserInfo(_handle!);
-
-      if (userInfo == null) {
-        _showErrorDialog(
-            'Failed to fetch user info. Please check your handle.');
-        return;
-      }
-
       final rating = userInfo['rating'];
       final maxRating = userInfo['maxRating'];
 
       await StatusDb.saveMaxRating(maxRating as int);
       await StatusDb.saveCurrentRating(rating as int);
-
-      setState(() {
-        _rating = rating;
-        _maxRating = maxRating;
-      });
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      _showErrorDialog(
+          'Failed to fetch user info (code: $code). Please try again later.');
+      debugPrint('DioException fetching user info: $e');
     } catch (error) {
       _showErrorDialog('Failed to fetch user info. Please try again later.');
       debugPrint('Error fetching user info: $error');
@@ -162,17 +152,18 @@ class _PersonalPageState extends State<PersonalPage> {
     try {
       await _fetchRatingFromServer();
       await fetchAndProcessSubmissions(handle);
-
       int deltaAvg = await _cfApi.fetchUserRatingDeltaAvg(handle);
-      await StatusDb.saveRatingDeltaAvg(deltaAvg);
-
-      setState(() {
-        _ratingDeltaAvg = deltaAvg;
-      });
+      await StatusDb.saveRatingDeltaAvg(deltaAvg);  
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      _showErrorDialog('Failed to fetch user statistics (code: $code). Please try again later.');
+      debugPrint('DioException fetching user statistics: $e');
+      await _clearHandle();
     } catch (error) {
       _showErrorDialog(
-          'Failed to fetch user statistics. Please try again later.');
+          'Failed to fetch user statistics. Please try again later. $error');
       debugPrint('Error fetching user statistics: $error');
+      await _clearHandle();
     }
   }
 
@@ -232,6 +223,8 @@ class _PersonalPageState extends State<PersonalPage> {
       String handle = StatusDb.getHandle();
       await _fetchUserStat(handle);
       await fetchAndProcessSubmissions(handle);
+
+      _loadUserStat();
     } catch (error) {
       debugPrint('Error refreshing user statistics: $error');
       await _showErrorDialog(
@@ -273,7 +266,7 @@ class _PersonalPageState extends State<PersonalPage> {
   }
 
   void onTapMedium() {
-    debugPrint('보통 문제 카드 선택됨');
+    // todo: try to get medium problems
   }
 
   void onTapHard() {
@@ -282,5 +275,15 @@ class _PersonalPageState extends State<PersonalPage> {
 
   void onTapSet() {
     debugPrint('종합 세트 카드 선택됨');
+  }
+
+  Future<void> _clearHandle() async {
+    await StatusDb.clearHandle();
+    setState(() {
+      _handle = null;
+      _rating = null;
+      _maxRating = null;
+      _ratingDeltaAvg = null;
+    });
   }
 }
