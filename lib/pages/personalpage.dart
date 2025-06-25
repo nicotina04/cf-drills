@@ -284,7 +284,6 @@ class _PersonalPageState extends State<PersonalPage> {
       minProb = 0.4;
       maxProb = 0.6;
     } else {
-      // For hard or other difficulties, you can set your own probabilities
       minProb = 0.25;
       maxProb = 0.4;
     }

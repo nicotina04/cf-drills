@@ -137,10 +137,10 @@ class StatusDb {
         .get('displayed_$difficulty', defaultValue: <Map<String, dynamic>>[]));
   }
 
-  static Map<String, dynamic> getContestData(String contestId) {
+  static Map<String, double> getContestData(String contestId) {
     final box = Hive.box(_boxName);
-    return Map<String, dynamic>.from(
-        box.get('contest_data_$contestId', defaultValue: <String, dynamic>{}));
+    return Map<String, double>.from(
+        box.get('contest_data_$contestId', defaultValue: <String, double>{}));
   }
 
   static Future<void> clear() async {
