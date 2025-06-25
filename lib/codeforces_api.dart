@@ -124,4 +124,39 @@ class CodeforcesApi {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>> fetchContestStandings(int contestId) async {
+    try {
+      var res = await dio.get('contest.standings', queryParameters: {
+        'contestId': contestId,
+        'showUnofficial': false,
+      });
+
+      if (res.statusCode == 200 && res.data['status'] == 'OK') {
+        return Map<String, dynamic>.from(res.data['result']);
+      } else {
+        throw Exception(
+            'Failed to fetch contest standings: code=${res.statusCode}, data=${res.data}');
+      }
+    } catch (e) {
+      print('Error fetching contest standings: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRatingChanges(int contestId) async {
+    try {
+      var res = await dio.get('contest.ratingChanges',
+          queryParameters: {'contestId': contestId});
+      if (res.statusCode == 200 && res.data['status'] == 'OK') {
+        return List<Map<String, dynamic>>.from(res.data['result']);
+      } else {
+        throw Exception(
+            'Failed to fetch contest rating changes: code=${res.statusCode}, data=${res.data}');
+      }
+    } catch (e) {
+      print('Error fetching contest rating changes: $e');
+      rethrow;
+    }
+  }
 }
