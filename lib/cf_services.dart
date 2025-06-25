@@ -104,7 +104,6 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb,
         StatusDb.getCurrentRating().toDouble();
     inputMap['max_rating_before_contest'] = StatusDb.getMaxRating().toDouble();
     inputMap['rating_delta_avg'] = StatusDb.getRatingDeltaAvg().toDouble();
-    // calculate contest data
 
     final int contestId = problem['contestId'];
     if (StatusDb.hasContestData('$contestId') == false) {
@@ -146,5 +145,53 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb,
 }
 
 Future<void> _calculateContestData(int contestId) async {
-  throw UnimplementedError('Contest data calculation is not implemented yet.');
+  final cfApi = CodeforcesApi();
+  final contestData = await cfApi.fetchContestStandings(contestId);
+
+  String contestName = contestData['contest']['name'];
+  int totalContestants = contestData['rows'].length;
+
+  int contestDivisionTag = _getContestDivisionTag(contestName);
+  // int ratedContestants = contestStandings.where((item) => item)
+
+  final Map<String, double> contestMap = {
+    'division_type': contestDivisionTag.toDouble(),
+    'contest_id': contestId.toDouble(),
+    'contest_rating': contestData['rating']?.toDouble() ?? 0.0,
+    'contest_duration_seconds':
+        contestData['durationSeconds']?.toDouble() ?? 0.0,
+    'contest_start_time_seconds':
+        contestData['startTimeSeconds']?.toDouble() ?? 0.0,
+  };
+
+  await StatusDb.saveContestData('$contestId', contestMap);
+}
+
+int _getContestDivisionTag(String contestName) {
+  contestName = contestName.toLowerCase();
+  if (contestName.contains('hello') ||
+      contestName.contains('good bye') ||
+      contestName.contains('goodbye')) {
+    return 5;
+  } else if (contestName.contains('div. 1 + div. 2') ||
+      contestName.contains('global')) {
+    return 5;
+  } else if (contestName.contains('div. 1')) {
+    return 1;
+  } else if (contestName.contains('div. 2')) {
+    return 2;
+  } else if (contestName.contains('div. 3')) {
+    return 3;
+  } else if (contestName.contains('div. 4')) {
+    return 4;
+  } else {
+    return 5; // usually means all rated contests
+  }
+}
+
+Future<Map<String, double>> _calculateContestStatistics(int contestId) async {
+  final cfApi = CodeforcesApi();
+  final ratingChanges = await cfApi.fetchRatingChanges(contestId);
+  throw UnimplementedError(
+      'Contest statistics calculation is not implemented yet.');
 }
