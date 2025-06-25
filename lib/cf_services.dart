@@ -106,6 +106,13 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb,
     inputMap['rating_delta_avg'] = StatusDb.getRatingDeltaAvg().toDouble();
     // calculate contest data
 
+    final int contestId = problem['contestId'];
+    if (StatusDb.hasContestData('$contestId') == false) {
+      await _calculateContestData(contestId);
+    }
+
+    Map<String, double> contestData = StatusDb.getContestData('$contestId');
+
     // final contestId = problem
     StatusDb.getTagMaxRatings().forEach((tag, rating) {
       inputMap['accepted_max_rating_$tag'] = rating.toDouble();
@@ -123,6 +130,7 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb,
     final result = await model.predict(inputVector, featureSize);
 
     if (result < minProb || result > maxProb) {
+      print('Problem $problem passed');
       continue;
     }
 
@@ -135,4 +143,8 @@ Future<List<Map<String, dynamic>>> selectRandomProblems(double minProb,
   }
 
   return selectedProblems;
+}
+
+Future<void> _calculateContestData(int contestId) async {
+  throw UnimplementedError('Contest data calculation is not implemented yet.');
 }
