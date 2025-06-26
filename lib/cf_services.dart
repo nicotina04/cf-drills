@@ -153,6 +153,7 @@ Future<void> _calculateContestData(int contestId) async {
 
   int contestDivisionTag = _getContestDivisionTag(contestName);
   // int ratedContestants = contestStandings.where((item) => item)
+  final Map<String, double> contestStatistics = await _calculateContestStatistics(contestId);
 
   final Map<String, double> contestMap = {
     'division_type': contestDivisionTag.toDouble(),
@@ -164,7 +165,13 @@ Future<void> _calculateContestData(int contestId) async {
         contestData['startTimeSeconds']?.toDouble() ?? 0.0,
   };
 
-  await StatusDb.saveContestData('$contestId', contestMap);
+  // todo: determine how to calculate `count_total`. (from contestStaindings vs ratingChanges)
+  final Map<String, dynamic> mergedMap = {
+    ...contestMap,
+    ...contestStatistics,
+  };
+
+  await StatusDb.saveContestData('$contestId', mergedMap);
 }
 
 int _getContestDivisionTag(String contestName) {
@@ -192,6 +199,25 @@ int _getContestDivisionTag(String contestName) {
 Future<Map<String, double>> _calculateContestStatistics(int contestId) async {
   final cfApi = CodeforcesApi();
   final ratingChanges = await cfApi.fetchRatingChanges(contestId);
-  throw UnimplementedError(
-      'Contest statistics calculation is not implemented yet.');
+  int ratedContestants = 0;
+  int unratedContestants = 0;
+  int sumOldRating = 0;
+
+  for (final item in ratingChanges) {
+    int oldRating = item['oldRating'] as int? ?? 0;
+    if (oldRating == 0) {
+      continue;
+    }
+
+    sumOldRating += oldRating;
+    ++ratedContestants;
+  }
+
+  Map<String, double> contestStatistics = {
+    'avg_rating_rated_only': (sumOldRating / max(ratedContestants, 1)).toDouble(),
+    'count_total': ratingChanges.length.toDouble(),
+    'unrated_ratio': (unratedContestants / max(ratedContestants + unratedContestants, 1)).toDouble(),
+  };
+
+  return contestStatistics;
 }
