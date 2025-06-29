@@ -79,7 +79,7 @@ class _PersonalPageState extends State<PersonalPage> {
                 ),
                 const SizedBox(width: 16),
                 Text(
-                  'Rating Delta Avg: ${_ratingDeltaAvg != null ? _ratingDeltaAvg : '0'}',
+                  'Rating Delta Avg: ${_ratingDeltaAvg ?? 0}',
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold),
                 ),
@@ -95,23 +95,23 @@ class _PersonalPageState extends State<PersonalPage> {
                     CardElement(
                         icon: Icons.cake,
                         title: 'Easy',
-                        description: '쉬운 문제(정답률 70%~80%)',
+                        description: '쉬운 문제',
                         onTap: () async => await onTapCard(context, 'easy')),
                     CardElement(
                         icon: Icons.bolt,
                         title: 'Medium',
-                        description: '보통 문제(정답률 40%~60%)',
+                        description: '보통 문제',
                         onTap: () async => await onTapCard(context, 'medium')),
                     CardElement(
                         icon: Icons.fireplace_outlined,
                         title: 'Challenging',
-                        description: '도전 문제(정답률 25%~40%)',
+                        description: '도전 문제',
                         onTap: () async => await onTapCard(context, 'hard')),
                     CardElement(
                         icon: Icons.rocket_launch,
                         title: 'Set',
                         description: '종합 세트',
-                        onTap: onTapSet),
+                        onTap: () async => await onTapCard(context, 'set')),
                   ],
                 ),
               ),
@@ -129,10 +129,10 @@ class _PersonalPageState extends State<PersonalPage> {
   }
 
   Future<void> _fetchRatingFromServer() async {
-    if (_handle == null || _handle!.isEmpty) return;
+    String handle = StatusDb.getHandle();
 
     try {
-      final userInfo = await _cfApi.fetchUserInfo(_handle!);
+      final userInfo = await _cfApi.fetchUserInfo(handle);
       final rating = userInfo['rating'];
       final maxRating = userInfo['maxRating'];
 
@@ -211,7 +211,19 @@ class _PersonalPageState extends State<PersonalPage> {
             ));
 
     if (result != null && result.isNotEmpty) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
+      }
+
       await _saveHandle(result);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 
@@ -251,18 +263,6 @@ class _PersonalPageState extends State<PersonalPage> {
     );
   }
 
-  Color _getRatingColor(int? rating) {
-    if (rating == null) return Colors.grey;
-    if (rating < 1200) return Colors.grey;
-    if (rating < 1400) return const Color.fromARGB(255, 0, 128, 0);
-    if (rating < 1600) return const Color.fromARGB(255, 3, 168, 158);
-    if (rating < 1900) return const Color.fromARGB(255, 0, 0, 255);
-    if (rating < 2100) return const Color.fromARGB(255, 170, 0, 170);
-    if (rating < 2400) return const Color.fromARGB(255, 255, 140, 0);
-    if (rating < 4000) return Colors.red;
-    return Colors.black;
-  }
-
   Future<void> onTapCard(BuildContext context, String difficulty) async {
     if (!StatusDb.hasHandle()) {
       await _showErrorDialog('Please enter your Codeforces handle first.');
@@ -274,38 +274,22 @@ class _PersonalPageState extends State<PersonalPage> {
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()));
 
-    List<Map<String, dynamic>> problems;
-    double minProb, maxProb;
-
-    if (difficulty == 'easy') {
-      minProb = 0.7;
-      maxProb = 0.8;
-    } else if (difficulty == 'medium') {
-      minProb = 0.4;
-      maxProb = 0.6;
-    } else {
-      minProb = 0.25;
-      maxProb = 0.4;
-    }
-
     try {
-      if (StatusDb.hasEasyProblems()) {
-        problems = StatusDb.getDisplayedProblems(difficulty);
-      } else {
-        final unsolvedProblems = await getUnsolvedProblems();
-        problems =
-            await selectRandomProblems(minProb, maxProb, unsolvedProblems, 6);
-        await StatusDb.saveDisplayedProblems(problems, difficulty);
+      List<Map<String, dynamic>> problems;
+      await loadRecommendations(difficulty);
+      problems = StatusDb.getDisplayedProblems(difficulty);
+
+      if (context.mounted) {
+        Navigator.of(context).pop();
+
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => ProblemListPage(
+                    difficulty: difficulty,
+                    title: 'Recommended Problems ($difficulty)',
+                    problems: problems)));
       }
-
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
-
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => ProblemListPage(
-                  title: '$difficulty Problems', problems: problems)));
     } catch (e) {
       if (!context.mounted) return;
 
@@ -313,11 +297,21 @@ class _PersonalPageState extends State<PersonalPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('문제 불러오기 실패: $e')),
       );
+
+      rethrow;
     }
   }
 
-  void onTapSet() {
-    debugPrint('종합 세트 카드 선택됨');
+  Color _getRatingColor(int? rating) {
+    if (rating == null) return Colors.grey;
+    if (rating < 1200) return Colors.grey;
+    if (rating < 1400) return const Color.fromARGB(255, 0, 128, 0);
+    if (rating < 1600) return const Color.fromARGB(255, 3, 168, 158);
+    if (rating < 1900) return const Color.fromARGB(255, 0, 0, 255);
+    if (rating < 2100) return const Color.fromARGB(255, 170, 0, 170);
+    if (rating < 2400) return const Color.fromARGB(255, 255, 140, 0);
+    if (rating < 4000) return Colors.red;
+    return Colors.black;
   }
 
   Future<void> _clearHandle() async {
