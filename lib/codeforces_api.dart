@@ -155,8 +155,8 @@ class CodeforcesApi {
             'Failed to fetch contest rating changes: code=${res.statusCode}, data=${res.data}');
       }
     } catch (e) {
-      print('Error fetching contest rating changes: $e');
-      rethrow;
+      // Unrated contest
+      return List<Map<String, dynamic>>.empty(growable: false);
     }
   }
 }
