@@ -5,6 +5,7 @@ import '../db.dart';
 import '../cf_services.dart';
 import 'problem_list_page.dart';
 import 'cardelement.dart';
+import 'package:cf_drills/l10n/app_localizations.dart' as l10n;
 
 class PersonalPage extends StatefulWidget {
   const PersonalPage({Key? key}) : super(key: key);
@@ -95,22 +96,30 @@ class _PersonalPageState extends State<PersonalPage> {
                     CardElement(
                         icon: Icons.cake,
                         title: 'Easy',
-                        description: '쉬운 문제',
+                        description: l10n.AppLocalizations.of(context)!
+                                .translate('easyProblem') ??
+                            '쉬운 문제',
                         onTap: () async => await onTapCard(context, 'easy')),
                     CardElement(
                         icon: Icons.bolt,
                         title: 'Medium',
-                        description: '보통 문제',
+                        description: l10n.AppLocalizations.of(context)!
+                                .translate('mediumProblem') ??
+                            '중간 문제',
                         onTap: () async => await onTapCard(context, 'medium')),
                     CardElement(
                         icon: Icons.fireplace_outlined,
                         title: 'Challenging',
-                        description: '도전 문제',
+                        description: l10n.AppLocalizations.of(context)!
+                                .translate('hardProblem') ??
+                            '도전적인 문제',
                         onTap: () async => await onTapCard(context, 'hard')),
                     CardElement(
                         icon: Icons.rocket_launch,
                         title: 'Set',
-                        description: '종합 세트',
+                        description: l10n.AppLocalizations.of(context)!
+                                .translate('problemSet') ??
+                            '문제 세트',
                         onTap: () async => await onTapCard(context, 'set')),
                   ],
                 ),
@@ -295,7 +304,7 @@ class _PersonalPageState extends State<PersonalPage> {
 
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('문제 불러오기 실패: $e')),
+        SnackBar(content: Text('Failed to load problems: $e')),
       );
 
       rethrow;

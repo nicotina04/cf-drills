@@ -1,0 +1,10 @@
+{
+    "easyProblem": "쉬운 문제",
+    "mediumProblem": "보통 문제",
+    "hardProblem": "도전 문제",
+    "problemSet": "종합 세트",
+    "personalModeTitle": "개인 모드",
+    "teamModeTitle": "팀 모드",
+    "personalModeDescription": "나만의 맞춤 문제 세트 생성",
+    "teamModeDescription": "팀 연습을 위한 문제 세트 생성"
+}

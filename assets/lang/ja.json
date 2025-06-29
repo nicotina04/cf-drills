@@ -1,0 +1,10 @@
+{
+  "easyProblem": "簡単な問題",
+  "mediumProblem": "普通の問題",
+  "hardProblem": "挑戦的な問題",
+  "problemSet": "総合セット",
+  "personalModeTitle": "個人モード",
+  "teamModeTitle": "チームモード",
+  "personalModeDescription": "自分専用の問題セットを作成",
+  "teamModeDescription": "チーム練習用の問題セットを作成"
+}

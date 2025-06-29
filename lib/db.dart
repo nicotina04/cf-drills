@@ -1,11 +1,21 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
 class StatusDb {
-  static const String _boxName = 'handle_data';
+  static const String _boxName = 'db';
 
   static Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(_boxName);
+  }
+
+  static Future<void> saveLocale(String locale) async {
+    final box = Hive.box(_boxName);
+    await box.put('locale', locale);
+  }
+
+  static String getLocale() {
+    final box = Hive.box(_boxName);
+    return box.get('locale', defaultValue: 'en') as String;
   }
 
   static Future<void> saveHandle(String handle) async {

@@ -1,0 +1,10 @@
+{
+    "easyProblem": "Easy Problems",
+    "mediumProblem": "Medium Problems",
+    "hardProblem": "Challenge Problems",
+    "problemSet": "Problem Set",
+    "personalModeTitle": "Personal Mode",
+    "teamModeTitle": "Team Mode",
+    "personalModeDescription": "Create a personalized problem set",
+    "teamModeDescription": "Create a problem set for team practice"
+}

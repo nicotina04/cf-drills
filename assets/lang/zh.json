@@ -1,0 +1,10 @@
+{
+  "easyProblem": "简单题",
+  "mediumProblem": "中等题",
+  "hardProblem": "挑战题",
+  "problemSet": "综合题集",
+  "personalModeTitle": "个人模式",
+  "teamModeTitle": "团队模式",
+  "personalModeDescription": "创建个性化习题集",
+  "teamModeDescription": "创建团队训练习题集"
+}

@@ -1,0 +1,10 @@
+{
+  "easyProblem": "Лёгкая задача",
+  "mediumProblem": "Средняя задача",
+  "hardProblem": "Сложная задача",
+  "problemSet": "Комплексный набор",
+  "personalModeTitle": "Личный режим",
+  "teamModeTitle": "Командный режим",
+  "personalModeDescription": "Создание персонального набора задач",
+  "teamModeDescription": "Создание набора задач для командной тренировки"
+}
