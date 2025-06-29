@@ -100,8 +100,8 @@ class StatusDb {
 
   static List<Map<String, dynamic>> getDisplayedProblems(String difficulty) {
     final box = Hive.box(_boxName);
-    return List<Map<String, dynamic>>.from(box.get('displayed_$difficulty',
-        defaultValue: List<Map<String, dynamic>>.empty()));
+    final raw = box.get('displayed_$difficulty', defaultValue: []);
+    return (raw as List).map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   static bool hasContestData(String contestId) {
@@ -113,6 +113,17 @@ class StatusDb {
       String contestId, Map<String, dynamic> data) async {
     final box = Hive.box(_boxName);
     await box.put('contest_data_$contestId', data);
+  }
+
+  static Map<String, double> getContestData(String contestId) {
+    final box = Hive.box(_boxName);
+    return Map<String, double>.from(
+        box.get('contest_data_$contestId', defaultValue: <String, double>{}));
+  }
+
+  static bool hasProblems(String difficulty) {
+    final box = Hive.box(_boxName);
+    return box.containsKey('displayed_$difficulty');
   }
 
   static bool hasEasyProblems() {
@@ -135,12 +146,6 @@ class StatusDb {
     final box = Hive.box(_boxName);
     return List<Map<String, dynamic>>.from(box
         .get('displayed_$difficulty', defaultValue: <Map<String, dynamic>>[]));
-  }
-
-  static Map<String, double> getContestData(String contestId) {
-    final box = Hive.box(_boxName);
-    return Map<String, double>.from(
-        box.get('contest_data_$contestId', defaultValue: <String, double>{}));
   }
 
   static Future<void> clear() async {

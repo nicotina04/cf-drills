@@ -1,3 +1,4 @@
+problem_rating
 current_rating_before_contest
 max_rating_before_contest
 recent_delta_avg
