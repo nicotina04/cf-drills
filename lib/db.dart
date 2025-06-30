@@ -126,21 +126,6 @@ class StatusDb {
     return box.containsKey('displayed_$difficulty');
   }
 
-  static bool hasEasyProblems() {
-    final box = Hive.box(_boxName);
-    return box.containsKey('displayed_easy');
-  }
-
-  static bool hasMediumProblems() {
-    final box = Hive.box(_boxName);
-    return box.containsKey('displayed_medium');
-  }
-
-  static bool hasHardProblems() {
-    final box = Hive.box(_boxName);
-    return box.containsKey('displayed_hard');
-  }
-
   static List<Map<String, dynamic>> getDisplayedProblemsAsync(
       String difficulty) {
     final box = Hive.box(_boxName);
@@ -151,5 +136,13 @@ class StatusDb {
   static Future<void> clear() async {
     final box = Hive.box(_boxName);
     await box.clear();
+  }
+
+  static Future<void> clearDisplayedProblems() async {
+    final box = Hive.box(_boxName);
+    await box.delete('displayed_easy');
+    await box.delete('displayed_medium');
+    await box.delete('displayed_hard');
+    await box.delete('displayed_set');
   }
 }

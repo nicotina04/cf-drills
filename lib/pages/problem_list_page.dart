@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:async/async.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:cf_drills/cf_services.dart' as cf_services;
 import 'package:cf_drills/db.dart';
 
-class ProblemListPage extends StatelessWidget {
+
+class ProblemListPage extends StatefulWidget {
   final String title;
   final String difficulty;
   final List<Map<String, dynamic>> problems;
@@ -16,9 +18,24 @@ class ProblemListPage extends StatelessWidget {
   });
 
   @override
+  State<ProblemListPage> createState() => _ProblemListPageState();
+}
+
+class _ProblemListPageState extends State<ProblemListPage> {
+  bool _isRefreshing = false;
+  bool _refreshCompleted = false;
+  CancelableOperation? _refreshOp;
+
+  @override
+  void dispose() {
+    _refreshOp?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: AppBar(title: Text(widget.title)),
         body: Padding(
           padding: const EdgeInsets.all(2),
           child: Column(
@@ -26,9 +43,12 @@ class ProblemListPage extends StatelessWidget {
               Row(
                 children: [
                   ElevatedButton(
-                      onPressed: () async =>
-                          await onPressedRefreshRecommendations(context),
-                      child: const Text('Refresh Recommendations'))
+                      onPressed: _isRefreshing ? null : () async =>
+                          await onPressedRefreshProblems(context),
+                      child: const Text('Refresh Problem List')),
+                      const SizedBox(width: 16),
+                      if (_isRefreshing) const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2,),),
+                      if (_refreshCompleted && !_isRefreshing) const Icon(Icons.check_circle, color: Colors.green),
                 ],
               ),
               const SizedBox(height: 8),
@@ -38,7 +58,7 @@ class ProblemListPage extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      for (var problem in problems)
+                      for (var problem in widget.problems)
                         ProblemCard(problem: problem)
                     ],
                   ),
@@ -49,32 +69,54 @@ class ProblemListPage extends StatelessWidget {
         ));
   }
 
-  Future<void> onPressedRefreshRecommendations(BuildContext context) async {
-    showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()));
+  Future<void> onPressedRefreshProblems(BuildContext context) async {
+    setState(() {
+      _isRefreshing = true;
+      _refreshCompleted = false;
+    });
 
-    await cf_services.fetchAndProcessSubmissions(StatusDb.getHandle());
-    await cf_services.refreshRecommendations(difficulty);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Recommendations will refresh automatically once processing is complete.'), duration: Duration(seconds: 1),),
+    );
+
+    await _refreshOp?.cancel();
+
+    _refreshOp = CancelableOperation.fromFuture(cf_services.refreshRecommendations(widget.difficulty));
+
+    await _refreshOp!.valueOrCancellation();
+
+    if (mounted == false) {
+      return;
+    }
+
+    final refreshedProblems = StatusDb.getDisplayedProblems(widget.difficulty);
+  
+    setState(() {
+        _isRefreshing = false;
+        _refreshCompleted = true;
+      });
+
+    Future.delayed(const Duration(seconds: 2), () {
+        setState(() {
+          _refreshCompleted = false;
+        });
+      });
 
     if (context.mounted) {
-      Navigator.of(context).pop();
-
-      final refreshedProblems = StatusDb.getDisplayedProblems(difficulty);
-
       Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ProblemListPage(
-                  difficulty: difficulty,
-                  title: title,
-                  problems: refreshedProblems)));
+        context,
+        MaterialPageRoute(
+            builder: (context) => ProblemListPage(
+                difficulty: widget.difficulty,
+                title: widget.title,
+                problems: refreshedProblems)));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Recommendations refreshed')),
       );
     }
+
+    
   }
 }
 

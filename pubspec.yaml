@@ -42,6 +42,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   url_launcher: ^6.3.1
+  desktop_window: ^0.4.2
 
 dev_dependencies:
   flutter_test:
@@ -70,11 +71,6 @@ flutter:
     - assets/models/XGBoost.onnx
     - assets/problem_tags.txt
     - assets/feature_names.txt
-    - assets/lang/en.json
-    - assets/lang/ko.json
-    - assets/lang/ja.json
-    - assets/lang/ru.json
-    - assets/lang/zh.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

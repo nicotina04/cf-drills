@@ -7,7 +7,7 @@ import 'problem_list_page.dart';
 import 'cardelement.dart';
 
 class PersonalPage extends StatefulWidget {
-  const PersonalPage({Key? key}) : super(key: key);
+  const PersonalPage({super.key});
 
   @override
   State<PersonalPage> createState() => _PersonalPageState();
@@ -95,22 +95,22 @@ class _PersonalPageState extends State<PersonalPage> {
                     CardElement(
                         icon: Icons.cake,
                         title: 'Easy',
-                        description: '쉬운 문제',
+                        description: 'Problems that are reasonably easy\nbut still challenging',
                         onTap: () async => await onTapCard(context, 'easy')),
                     CardElement(
                         icon: Icons.bolt,
                         title: 'Medium',
-                        description: '보통 문제',
+                        description: 'problems that are suitably challenging',
                         onTap: () async => await onTapCard(context, 'medium')),
                     CardElement(
                         icon: Icons.fireplace_outlined,
                         title: 'Challenging',
-                        description: '도전 문제',
+                        description: 'For users seeking higher-level challenges',
                         onTap: () async => await onTapCard(context, 'hard')),
                     CardElement(
                         icon: Icons.rocket_launch,
                         title: 'Set',
-                        description: '종합 세트',
+                        description: 'Mixed set of problems',
                         onTap: () async => await onTapCard(context, 'set')),
                   ],
                 ),
@@ -124,6 +124,7 @@ class _PersonalPageState extends State<PersonalPage> {
 
   Future<void> _saveHandle(String handle) async {
     await StatusDb.saveHandle(handle);
+    await StatusDb.clearDisplayedProblems();
     await _fetchUserStat(handle);
     _loadUserStat();
   }
@@ -220,6 +221,7 @@ class _PersonalPageState extends State<PersonalPage> {
       }
 
       await _saveHandle(result);
+      await fetchAndProcessSubmissions(result);
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -274,6 +276,16 @@ class _PersonalPageState extends State<PersonalPage> {
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()));
 
+    if (StatusDb.hasProblems(difficulty) == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Recommendations process is running. Please wait...'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+
+    
     try {
       List<Map<String, dynamic>> problems;
       await loadRecommendations(difficulty);
