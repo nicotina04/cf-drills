@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:desktop_window/desktop_window.dart';
+import 'dart:io';
 import 'pages/personalpage.dart';
 import 'pages/teampage.dart';
 import 'pages/cardelement.dart';
@@ -8,6 +10,11 @@ import 'local_data_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!Platform.isAndroid && !Platform.isIOS) {
+    await DesktopWindow.setMinWindowSize(const Size(900, 600));
+  }
+
   await LocalDataService.init();
   await XGBoostRunner().init();
   await StatusDb.init();
@@ -36,15 +43,15 @@ class MyApp extends StatelessWidget {
             children: [
               CardElement(
                 icon: Icons.person,
-                title: "개인 모드",
-                description: "나만의 맞춤 문제 세트 생성",
+                title: "Personal Mode",
+                description: "Create a personalized problem set",
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const PersonalPage())),
               ),
               CardElement(
                 icon: Icons.group,
-                title: "팀 모드 (최대 3명)",
-                description: "팀 연습을 위한 문제 세트 구성",
+                title: "Team Mode",
+                description: "Create a problem set for team practice",
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const TeamPage())),
               ),

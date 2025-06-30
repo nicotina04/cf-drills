@@ -76,12 +76,19 @@ Future<List<Map<String, dynamic>>> getUnsolvedProblems() async {
   final allProblems = await cfApi.fetchAllProblems();
   final solvedProblems = StatusDb.getSolvedProblems();
 
+  int handleRating = StatusDb.getCurrentRating();
+  if (handleRating < 800) {
+    handleRating = 800;
+  }
+
   return allProblems
       .where((problem) =>
           !solvedProblems
               .contains("${problem['contestId']}:${problem['index']}") &&
           problem.containsKey('rating') &&
-          problem['rating'] != null)
+          problem['rating'] != null &&
+          problem['rating'] >= handleRating - 400 &&
+          problem['rating'] <= handleRating + 400)
       .toList();
 }
 
@@ -187,15 +194,12 @@ Future<List<Map<String, dynamic>>> selectProblemSet(
     if (result >= 0.7 && result <= 0.9 && easyCount < 2) {
       selectedProblems.add(problem);
       easyCount++;
-      print('Selected easy problem: ${problem['name']}');
     } else if (result >= 0.45 && result < 0.7 - 1e-15 && mediumCount < 2) {
       selectedProblems.add(problem);
       mediumCount++;
-      print('Selected medium problem: ${problem['name']}');
     } else if (result >= 0.3 && result < 0.45 - 1e-15 && hardCount < 1) {
       selectedProblems.add(problem);
       hardCount++;
-      print('Selected hard problem: ${problem['name']}');
     }
 
     if (easyCount + mediumCount + hardCount == 5) {
