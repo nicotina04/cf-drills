@@ -95,7 +95,8 @@ class _PersonalPageState extends State<PersonalPage> {
                     CardElement(
                         icon: Icons.cake,
                         title: 'Easy',
-                        description: 'Problems that are reasonably easy\nbut still challenging',
+                        description:
+                            'Problems that are reasonably easy\nbut still challenging',
                         onTap: () async => await onTapCard(context, 'easy')),
                     CardElement(
                         icon: Icons.bolt,
@@ -105,7 +106,8 @@ class _PersonalPageState extends State<PersonalPage> {
                     CardElement(
                         icon: Icons.fireplace_outlined,
                         title: 'Challenging',
-                        description: 'For users seeking higher-level challenges',
+                        description:
+                            'For users seeking higher-level challenges',
                         onTap: () async => await onTapCard(context, 'hard')),
                     CardElement(
                         icon: Icons.rocket_launch,
@@ -285,7 +287,6 @@ class _PersonalPageState extends State<PersonalPage> {
       );
     }
 
-    
     try {
       List<Map<String, dynamic>> problems;
       await loadRecommendations(difficulty);
@@ -306,11 +307,22 @@ class _PersonalPageState extends State<PersonalPage> {
       if (!context.mounted) return;
 
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('문제 불러오기 실패: $e')),
-      );
 
-      rethrow;
+      showDialog(
+          context: context,
+          builder: (ctx) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text(
+                  'Failed to load problems. Please try again later.\nError: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 

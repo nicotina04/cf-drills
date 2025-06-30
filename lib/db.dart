@@ -53,6 +53,18 @@ class StatusDb {
     return box.get('current_rating', defaultValue: 0) as int;
   }
 
+  static Future<void> saveProblemSet(
+      List<Map<String, dynamic>> problems) async {
+    final box = Hive.box(_boxName);
+    await box.put('problem_set', problems);
+  }
+
+  static List<Map<String, dynamic>> getProblemSet() {
+    final box = Hive.box(_boxName);
+    final raw = box.get('problem_set', defaultValue: []);
+    return (raw as List).map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
   static Future<void> saveCurrentRating(int rating) async {
     final box = Hive.box(_boxName);
     await box.put('current_rating', rating);
@@ -131,6 +143,24 @@ class StatusDb {
     final box = Hive.box(_boxName);
     return List<Map<String, dynamic>>.from(box
         .get('displayed_$difficulty', defaultValue: <Map<String, dynamic>>[]));
+  }
+
+  static Future<void> saveLastFetchedProblemSetDate(DateTime time) async {
+    final box = Hive.box(_boxName);
+    await box.put('last_fetched_problems', time.toIso8601String());
+  }
+
+  static DateTime getLastFetchedProblemSetDate() {
+    final box = Hive.box(_boxName);
+    final timeString = box.get('last_fetched_problems', defaultValue: '');
+    return timeString.isNotEmpty
+        ? DateTime.parse(timeString)
+        : DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static bool hasLastFetchedProblemSetDate() {
+    final box = Hive.box(_boxName);
+    return box.containsKey('last_fetched_problems');
   }
 
   static Future<void> clear() async {
