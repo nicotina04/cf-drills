@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:cf_drills/cf_services.dart' as cf_services;
 import 'package:cf_drills/db.dart';
 
-
 class ProblemListPage extends StatefulWidget {
   final String title;
   final String difficulty;
@@ -29,6 +28,7 @@ class _ProblemListPageState extends State<ProblemListPage> {
   @override
   void dispose() {
     _refreshOp?.cancel();
+    _refreshOp = null;
     super.dispose();
   }
 
@@ -43,12 +43,21 @@ class _ProblemListPageState extends State<ProblemListPage> {
               Row(
                 children: [
                   ElevatedButton(
-                      onPressed: _isRefreshing ? null : () async =>
-                          await onPressedRefreshProblems(context),
+                      onPressed: _isRefreshing
+                          ? null
+                          : () async => await onPressedRefreshProblems(context),
                       child: const Text('Refresh Problem List')),
-                      const SizedBox(width: 16),
-                      if (_isRefreshing) const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2,),),
-                      if (_refreshCompleted && !_isRefreshing) const Icon(Icons.check_circle, color: Colors.green),
+                  const SizedBox(width: 16),
+                  if (_isRefreshing)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  if (_refreshCompleted && !_isRefreshing)
+                    const Icon(Icons.check_circle, color: Colors.green),
                 ],
               ),
               const SizedBox(height: 8),
@@ -70,53 +79,96 @@ class _ProblemListPageState extends State<ProblemListPage> {
   }
 
   Future<void> onPressedRefreshProblems(BuildContext context) async {
+    if (!mounted) return;
     setState(() {
       _isRefreshing = true;
       _refreshCompleted = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Recommendations will refresh automatically once processing is complete.'), duration: Duration(seconds: 1),),
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+            'Recommendations will refresh automatically once processing is complete.'),
+        duration: Duration(seconds: 1),
+      ),
     );
 
     await _refreshOp?.cancel();
+    _refreshOp = null;
 
-    _refreshOp = CancelableOperation.fromFuture(cf_services.refreshRecommendations(widget.difficulty));
+    try {
+      _refreshOp = CancelableOperation.fromFuture(
+        _executeRefresh(),
+        onCancel: () => _cleanUpAfterCancel(),
+      );
 
-    await _refreshOp!.valueOrCancellation();
-
-    if (mounted == false) {
-      return;
+      await _refreshOp!.valueOrCancellation();
+    } catch (e) {
+      _handleRefreshError(context, e);
     }
+  }
 
+  Future<void> _executeRefresh() async {
+    await cf_services.refreshRecommendations(widget.difficulty);
+
+    if (!mounted) return;
     final refreshedProblems = StatusDb.getDisplayedProblems(widget.difficulty);
-  
-    setState(() {
+
+    if (mounted) {
+      setState(() {
         _isRefreshing = false;
         _refreshCompleted = true;
       });
-
-    Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
-          _refreshCompleted = false;
-        });
-      });
-
-    if (context.mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) => ProblemListPage(
-                difficulty: widget.difficulty,
-                title: widget.title,
-                problems: refreshedProblems)));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Recommendations refreshed')),
-      );
     }
 
-    
+    if (mounted) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _refreshCompleted = false;
+          });
+        }
+      });
+    }
+
+    if (mounted) {
+      final navigator = Navigator.of(context);
+      await navigator.pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => ProblemListPage(
+            difficulty: widget.difficulty,
+            title: widget.title,
+            problems: refreshedProblems,
+          ),
+        ),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Recommendations refreshed')),
+        );
+      }
+    }
+  }
+
+  void _handleRefreshError(BuildContext context, Object e) {
+    if (mounted) {
+      setState(() {
+        _isRefreshing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _cleanUpAfterCancel() {
+    if (mounted) {
+      setState(() {
+        _isRefreshing = false;
+      });
+    }
   }
 }
 

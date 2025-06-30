@@ -1,10 +1,8 @@
+division_type
 problem_rating
 current_rating_before_contest
 max_rating_before_contest
 recent_delta_avg
-avg_rating_rated_only
-count_total
-unrated_ratio
 accepted_max_rating_implementation
 accepted_max_rating_math
 accepted_max_rating_greedy

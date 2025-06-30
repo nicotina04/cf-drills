@@ -4,6 +4,13 @@ import 'db.dart';
 import 'modelrunner.dart';
 import 'local_data_service.dart';
 
+double _easyProbMin = 0.8;
+double _easyProbMax = 0.9;
+double _mediumProbMin = 0.55;
+double _mediumProbMax = 0.8 - 1e-15;
+double _hardProbMin = 0.25;
+double _hardProbMax = 0.55 - 1e-15;
+
 Map<String, int> tagMaxRatingFromSubmissions(
     List<Map<String, dynamic>> submissions) {
   final Map<String, int> tagMaxRatings = {};
@@ -30,12 +37,6 @@ Map<String, int> tagMaxRatingFromSubmissions(
   }
 
   return tagMaxRatings;
-}
-
-Future<Map<String, int>> getMaxRatingByTag(String handle) async {
-  final cfApi = CodeforcesApi();
-  final submissions = await cfApi.fetchUserSubmissionHistory(handle);
-  return tagMaxRatingFromSubmissions(submissions);
 }
 
 Future<void> _saveSolvedProblemsAll(
@@ -73,7 +74,23 @@ Future<void> fetchAndProcessSubmissions(String handle) async {
 
 Future<List<Map<String, dynamic>>> getUnsolvedProblems() async {
   final cfApi = CodeforcesApi();
-  final allProblems = await cfApi.fetchAllProblems();
+  List<Map<String, dynamic>> allProblems = [];
+
+  try {
+    if (DateTime.now()
+            .difference(StatusDb.getLastFetchedProblemSetDate())
+            .inDays >=
+        1) {
+      allProblems = await cfApi.fetchAllProblems();
+      await StatusDb.saveProblemSet(allProblems);
+    } else {
+      allProblems = StatusDb.getProblemSet();
+    }
+  } catch (e) {
+    throw Exception(
+        'Failed to fetch problem set. Please try again later when codeforces server is ok.');
+  }
+
   final solvedProblems = StatusDb.getSolvedProblems();
 
   int handleRating = StatusDb.getCurrentRating();
@@ -81,14 +98,16 @@ Future<List<Map<String, dynamic>>> getUnsolvedProblems() async {
     handleRating = 800;
   }
 
+  // print('All problems count: ${allProblems.length}');
+
   return allProblems
       .where((problem) =>
           !solvedProblems
               .contains("${problem['contestId']}:${problem['index']}") &&
           problem.containsKey('rating') &&
           problem['rating'] != null &&
-          problem['rating'] >= handleRating - 400 &&
-          problem['rating'] <= handleRating + 400)
+          problem['rating'] >= handleRating - 500 &&
+          problem['rating'] <= handleRating + 500)
       .toList();
 }
 
@@ -110,17 +129,24 @@ Future<void> refreshRecommendations(String difficulty) async {
   }
 
   if (difficulty == 'easy') {
-    minProb = 0.7;
-    maxProb = 0.9;
+    minProb = _easyProbMin;
+    maxProb = _easyProbMax;
   } else if (difficulty == 'medium') {
-    minProb = 0.45;
-    maxProb = 0.7 - 1e-15;
+    minProb = _mediumProbMin;
+    maxProb = _mediumProbMax;
   } else {
-    minProb = 0.3;
-    maxProb = 0.45 - 1e-15;
+    minProb = _hardProbMin;
+    maxProb = _hardProbMax;
   }
 
-  final problems = await getUnsolvedProblems();
+  List<Map<String, dynamic>> problems;
+
+  try {
+    problems = await getUnsolvedProblems();
+  } catch (e) {
+    rethrow;
+  }
+
   final selectedProblems =
       await selectRandomProblems(minProb, maxProb, problems, 5);
 
@@ -128,7 +154,14 @@ Future<void> refreshRecommendations(String difficulty) async {
 }
 
 Future<void> _refreshRecommendationSet() async {
-  final unsolved = await getUnsolvedProblems();
+  List<Map<String, dynamic>> unsolved;
+
+  try {
+    unsolved = await getUnsolvedProblems();
+  } catch (e) {
+    rethrow;
+  }
+
   final problems = await selectProblemSet(unsolved);
 
   await StatusDb.saveDisplayedProblems(problems, 'set');
@@ -191,13 +224,17 @@ Future<List<Map<String, dynamic>>> selectProblemSet(
       continue;
     }
 
-    if (result >= 0.7 && result <= 0.9 && easyCount < 2) {
+    if (result >= _easyProbMin && result <= _easyProbMax && easyCount < 2) {
       selectedProblems.add(problem);
       easyCount++;
-    } else if (result >= 0.45 && result < 0.7 - 1e-15 && mediumCount < 2) {
+    } else if (result >= _mediumProbMin &&
+        result <= _mediumProbMax &&
+        mediumCount < 2) {
       selectedProblems.add(problem);
       mediumCount++;
-    } else if (result >= 0.3 && result < 0.45 - 1e-15 && hardCount < 1) {
+    } else if (result >= _hardProbMin &&
+        result <= _hardProbMax &&
+        hardCount < 1) {
       selectedProblems.add(problem);
       hardCount++;
     }
@@ -275,57 +312,13 @@ Future<void> _calculateContestData(int contestId) async {
   String contestName = contestData['contest']['name'];
 
   int contestDivisionTag = _getContestDivisionTag(contestName);
-  Map<String, double> contestStatistics;
 
-  try {
-    contestStatistics = await _calculateContestStatistics(contestId);
-  } catch (e) {
-    rethrow;
-  }
-
-  final Map<String, dynamic> mergedMap = {
-    ...contestStatistics,
-  };
+  final Map<String, dynamic> mergedMap = {};
 
   mergedMap['contest_id'] = contestId.toDouble();
   mergedMap['division_type'] = contestDivisionTag.toDouble();
 
   await StatusDb.saveContestData('$contestId', mergedMap);
-}
-
-Future<Map<String, double>> _calculateContestStatistics(int contestId) async {
-  final cfApi = CodeforcesApi();
-  final ratingChanges = await cfApi.fetchRatingChanges(contestId);
-
-  if (ratingChanges.isEmpty) {
-    throw Exception('No rating changes found for contest ID $contestId');
-  }
-
-  int ratedContestants = 0;
-  int unratedContestants = 0;
-  int sumOldRating = 0;
-
-  for (final item in ratingChanges) {
-    int oldRating = item['oldRating'] as int? ?? 0;
-    if (oldRating == 0) {
-      ++unratedContestants;
-      continue;
-    }
-
-    sumOldRating += oldRating;
-    ++ratedContestants;
-  }
-
-  Map<String, double> contestStatistics = {
-    'avg_rating_rated_only': _minMaxScale(
-        (sumOldRating / max(ratedContestants, 1)).toDouble(), 0, 4000),
-    'count_total': ratingChanges.length.toDouble(),
-    'unrated_ratio':
-        (unratedContestants / max(ratedContestants + unratedContestants, 1))
-            .toDouble(),
-  };
-
-  return contestStatistics;
 }
 
 int _getContestDivisionTag(String contestName) {
